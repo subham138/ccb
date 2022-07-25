@@ -1,0 +1,243 @@
+<%- include('../template/header.ejs') %>
+    <style>
+        #loader {
+            /* width: 100%; */
+            height: 100%;
+            margin: auto;
+        }
+
+        #loader.loading {
+            background: url(img/loader1.gif) no-repeat center center;
+            /* width: 100%; */
+            margin: auto;
+        }
+    </style>
+    <div class="main-panel">
+        <div id="loader" class="loading img-center" style="display: none;"></div>
+        <div class="content" id="display-content">
+            <div class="panel-header bg-primary-gradient">
+                <div class="page-inner py-5">
+                    <div class="d-flex align-items-left align-items-md-center flex-column flex-md-row">
+                        <div>
+                            <h2 class="text-white pb-2 fw-bold">Search Report</h2>
+                            <h5 class="text-white op-7 mb-2">Select pacs and choose date range to view report</h5>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="page-inner mt--5">
+                <div class="row mt--2">
+                    <div class="col-md-12">
+                        <div class="card full-height">
+                            <div class="card-body">
+                                <div class="card-title">Select PACS</div>
+                                <hr>
+                                <div class="row">
+                                    <div class="col-md-4 mb-3">
+                                        <span class="fw-bold mt-2">New Users</span>
+                                        <select class="form-control select2" name="pax_id" id="pax_id">
+                                            <option value="">Select PACS</option>
+                                            <% if(data.length> 0){
+                                                data.forEach(dt => { %>
+                                                <!-- <option value="<%= dt.ID %>">
+                                                    <%= dt.NAME %>
+                                                </option> -->
+                                                <option value="5">
+                                                    <%= dt.NAME %>
+                                                </option>
+                                                <% }) } %>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="row" style="display: none;" id="display_date">
+                                    <div class="col-md-3 mb-3 row">
+                                        <div class="col-12"><span class="fw-bold mt-2">Branch Name</span></div>
+                                        <div class="col-12">
+                                            <select class="form-control select2" name="branch_id" id="branch_id"
+                                                style="width: 100%;">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3 row">
+                                        <div class="col-12"><span class="fw-bold mt-2">Account Type</span></div>
+                                        <div class="col-12">
+                                            <select class="form-control select2" name="acc_type" id="acc_type"
+                                                style="width: 100%;">
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3">
+                                        <div class="form-group" id="to_dt_form">
+                                            <label for="dt">Date</label>
+                                            <input type="date" class="form-control" name="dt" id="dt"
+                                                placeholder="Date">
+                                        </div>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <div class="form-group">
+                                            <label for="">&nbsp;</label>
+                                            <button class="btn btn-success" type="button" id="search"><i
+                                                    class="fa fa-search"></i><span class="pl-2">Search</span></button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-inner mt--5" id="report_section" style="display: none;">
+                <div class="row mt--2">
+                    <div class="col-md-12">
+                        <div class="card full-height">
+                            <div class="card-body">
+                                <div class="card-title text-center" id="d_pacs_name"></div>
+                                <div class="card-category text-center" id="d_date_range"></div>
+                                <hr>
+                                <div class="table-responsive mt-3">
+                                    <table id="basic-datatables" class="display table table-striped table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>Acc. Number</th>
+                                                <th>Name</th>
+                                                <th>Opening Date</th>
+                                                <th>Constitution</th>
+                                                <th>Balance</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="res_data">
+
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <%- include('../template/footer.ejs') %>
+        <script>
+            $('#pax_id').on('change', function () {
+                var pax_id = $(this).val();
+                if (pax_id > 0) {
+                    console.log(pax_id);
+                    selectBrunch(pax_id);
+                    $.ajax({
+                        type: "GET",
+                        url: "/get_acc_type",
+                        data: { "pacs_id": pax_id },
+                        dataType: 'html',
+                        beforeSend: function () {
+                            // Show image container
+                            $("#loader").show();
+                            $('#display-content').hide();
+                        },
+                        success: function (result) {
+                            var res = JSON.parse(result);
+                            if (res.length > 0) {
+                                $('#acc_type >').empty();
+                                $('#acc_type').append($('<option>', { value: '', text: 'Select Account Type' }));
+                                $.each(res, function (i, item) {
+                                    $('#acc_type').append($('<option>', { value: item.ACC_TYPE, text: item.NAME }));
+                                });
+                            } else {
+                                $('#acc_type >').empty();
+                                $('#acc_type').append($('<option>', { value: '', text: 'Select Account Type' }));
+
+                            }
+                        },
+                        complete: function (data) {
+                            // Hide image container
+                            $("#loader").hide();
+                            $('#display-content').show();
+                            if (!$('#display_date').is(':visible')) $("#display_date").fadeIn();
+                        }
+                    });
+                } else {
+                    $("#display_date").fadeOut();
+                }
+            })
+            function selectBrunch(pax_id) {
+                $.ajax({
+                    type: "GET",
+                    url: "/get_brunch",
+                    data: { "pacs_id": pax_id },
+                    dataType: 'html',
+                    success: function (result) {
+                        var res = JSON.parse(result);
+                        if (res.length > 0) {
+                            $('#branch_id >').empty();
+                            $('#branch_id').append($('<option>', { value: '', text: 'Select Branch' }));
+                            $.each(res, function (i, item) {
+                                $('#branch_id').append($('<option>', { value: item.ID, text: item.NAME }));
+                            });
+                        } else {
+                            $('#branch_id >').empty();
+                            $('#branch_id').append($('<option>', { value: '', text: 'Select Branch' }));
+
+                        }
+                    }
+                });
+            }
+        </script>
+
+        <script>
+            $('#search').on('click', function () {
+                var branch_id = $('#branch_id').val(),
+                    branch_name = $('#branch_id :selected').text().trim(),
+                    acc_type = $('#acc_type').val(),
+                    acc_type_name = $('#acc_type :selected').text().trim(),
+                    date = $('#dt').val();
+
+                var pax_name = $('#pax_id :selected').text().trim();
+                var pax_id = $('#pax_id').val()
+                if (branch_id && acc_type && date) {
+                    $.ajax({
+                        type: "GET",
+                        url: "/get_report",
+                        data: { "pacs_id": pax_id, "branch_id": branch_id, "acc_type": acc_type, "date": date },
+                        dataType: 'html',
+                        beforeSend: function () {
+                            // Show image container
+                            $("#loader").show();
+                            $('#display-content').hide();
+                        },
+                        success: function (result) {
+                            var res = JSON.parse(result);
+                            $('#report_section').show();
+                            $('#d_pacs_name').text(pax_name);
+                            $('#d_date_range').html(`<b>Branch: </b> ${branch_name} <b class="pl-2">Account Type: </b>${acc_type_name} <b class="pl-2">Date: </b>${date}`)
+                            console.log(res);
+                            if (res.length > 0) {
+                                $('#res_data >').empty();
+                                $.each(res, function (i, item) {
+                                    $('#res_data').append('<tr>'
+                                        + '<td>' + item.ACC_NUM + '</td>'
+                                        + '<td>' + item.CUST_NAME + '</td>'
+                                        + '<td>' + item.OPENING_DT + '</td>'
+                                        + '<td>' + item.CONSTITUTION_DESC + '</td>'
+                                        + '<td>' + item.BALANCE + '</td>'
+                                        + '</tr>');
+                                });
+                            } else {
+                                $('#res_data >').empty();
+                                $('#res_data').append('<tr>'
+                                    + '<td class="text-danger text-center" colspan="5">NO DATA FOUND</td>'
+                                    + '</tr>');
+                            }
+                        },
+                        complete: function (data) {
+                            // Hide image container
+                            $("#loader").hide();
+                            $('#display-content').show();
+                        }
+                    });
+                } else {
+                    alert('Please select all required fields');
+                    $('#report_section').hide();
+                }
+            })
+        </script>
